@@ -1,39 +1,39 @@
-// ✅ service-worker.js
-const CACHE_NAME = 'house-inspection-cache-v1';
-const urlsToCache = [
-  '/',
-  '/index.html',
-  '/login.html',
-  '/manifest.json',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
-  'https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css',
-  'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js',
-  'https://static.line-scdn.net/liff/edge/versions/2.21.0/sdk.js'
+const CACHE_NAME = 'anxiapp-cache-v1';
+const cacheFiles = [
+  '/AnxiAPP/',
+  '/AnxiAPP/index.html',
+  '/AnxiAPP/login.html',
+  '/AnxiAPP/manifest.json',
+  '/AnxiAPP/icons/icon-192.png',
+  '/AnxiAPP/icons/icon-512.png',
 ];
 
-self.addEventListener('install', event => {
+// 安裝階段：將重要資源加入快取
+self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(cacheFiles);
+    })
   );
 });
 
-self.addEventListener('fetch', event => {
+// 取用階段：從快取回應或 fallback 到網路
+self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request)
-      .then(response => response || fetch(event.request))
+    caches.match(event.request).then((response) => {
+      return response || fetch(event.request);
+    })
   );
 });
 
-self.addEventListener('activate', event => {
+// 更新階段：清除舊版快取
+self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(cacheNames => {
+    caches.keys().then((keyList) => {
       return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
+        keyList.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
           }
         })
       );
