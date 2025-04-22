@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LINE 登入驗證</title>
+  <script src="https://static.line-scdn.net/liff/edge/versions/2.21.0/sdk.js"></script>
+  <style>
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      text-align: center;
+      margin-top: 100px;
+    }
+    #status {
+      margin-top: 20px;
+      font-size: 1.2em;
+      color: #005a8d;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>🔐 使用 LINE 帳號登入驗證</h2>
+  <p>請點選下方按鈕登入</p>
+  <button onclick="login()" style="padding: 10px 20px; font-size: 1rem;">使用 LINE 登入</button>
+
+  <div id="status"></div>
+
+  <script>
+    const LIFF_ID = "你的_LIFF_ID"; // ← 請填入你自己的 LIFF ID
+    const GAS_API = "https://script.google.com/macros/s/AKfycbz1RUvNGAlQjAFTx7gdNKcqb189bZfTuTklGRL8EimQ5SsjIwhViMtQOqpR6_5EVkI/exec"; // ← GAS Web App URL
+
+    async function login() {
+      document.getElementById('status').innerText = "初始化中...";
+
+      await liff.init({ liffId: LIFF_ID });
+
+      if (!liff.isLoggedIn()) {
+        liff.login(); // 自動導向 LINE 登入頁
+        return;
+      }
+
+      const profile = await liff.getProfile();
+      const userId = profile.userId;
+
+      document.getElementById('status').innerText = "正在驗證身分...";
+
+      const res = await fetch(GAS_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+      });
+
+      const result = await res.json();
+      if (result.status === 'authorized') {
+        document.getElementById('status').innerText = `✅ 登入成功，歡迎 ${profile.displayName}`;
+      } else {
+        document.getElementById('status').innerText = `❌ 你不在白名單中，請聯絡管理員`;
+        liff.logout();
+      }
+    }
+  </script>
+
+</body>
+</html>
