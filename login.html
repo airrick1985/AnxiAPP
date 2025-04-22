@@ -7,21 +7,9 @@
   <!-- LIFF SDK -->
   <script src="https://static.line-scdn.net/liff/edge/versions/2.21.0/sdk.js"></script>
   <style>
-    body {
-      font-family: 'Noto Sans TC', sans-serif;
-      text-align: center;
-      margin-top: 100px;
-    }
-    #status {
-      margin-top: 20px;
-      font-size: 1.2em;
-      color: #005a8d;
-    }
-    #loginBtn {
-      padding: 10px 20px;
-      font-size: 1rem;
-      cursor: pointer;
-    }
+    body { font-family: 'Noto Sans TC', sans-serif; text-align: center; margin-top: 100px; }
+    #status { margin-top: 20px; font-size: 1.2em; color: #005a8d; }
+    #loginBtn { padding: 10px 20px; font-size: 1rem; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -31,8 +19,8 @@
   <div id="status"></div>
 
   <script>
-    const LIFF_ID = "2007306147-DrM2yLeA";
-    const GAS_API = "https://square-snow-220a.airrick1985.workers.dev";
+    const LIFF_ID = "2007306147-DrM2yLeA";  // 已驗證正確
+    const GAS_API = "https://square-snow-220a.airrick1985.workers.dev"; // 你的 Worker URL
 
     async function login() {
       document.getElementById('status').innerText = '初始化中...';
@@ -45,21 +33,31 @@
         document.getElementById('status').innerText = '正在驗證身分...';
         const profile = await liff.getProfile();
         const userId = profile.userId;
+
+        // 為了除錯，先 log 出要呼叫的 URL 與 body
+        console.log('POST to proxy:', GAS_API, { userId });
         const res = await fetch(GAS_API, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId })
         });
-        const result = await res.json();
+
+        console.log('proxy response status:', res.status);
+        const text = await res.text();
+        console.log('proxy response text:', text);
+        // 然後再 parse JSON
+        const result = JSON.parse(text);
+
         if (result.status === 'authorized') {
           document.getElementById('status').innerText = `✅ 登入成功，歡迎 ${profile.displayName}`;
-          setTimeout(() => { window.location.href = 'index.html'; }, 1500);
+          setTimeout(() => location.href = 'index.html', 1500);
         } else {
           document.getElementById('status').innerText = '❌ 你不在白名單中，請聯絡管理員';
-          setTimeout(() => { liff.logout(); }, 2000);
+          setTimeout(() => liff.logout(), 2000);
         }
       } catch (err) {
         document.getElementById('status').innerText = `🚫 登入失敗：${err.message}`;
+        console.error(err);
       }
     }
 
