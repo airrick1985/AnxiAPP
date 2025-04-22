@@ -27,36 +27,46 @@
   <div id="status"></div>
 
   <script>
-    const LIFF_ID = "2007306147-DrM2yLeA"; // ← 請填入你自己的 LIFF ID
-    const GAS_API = "https://script.google.com/macros/s/AKfycbz1RUvNGAlQjAFTx7gdNKcqb189bZfTuTklGRL8EimQ5SsjIwhViMtQOqpR6_5EVkI/exec"; // ← GAS Web App URL
+    const LIFF_ID = "2007306147-DrM2yLeA"; // 例如："2007306147-DrM2yLeA"
+    const GAS_API = "https://script.google.com/macros/s/AKfycbz1RUvNGAlQjAFTx7gdNKcqb189bZfTuTklGRL8EimQ5SsjIwhViMtQOqpR6_5EVkI/exec"; // GAS Web App URL
 
     async function login() {
-      document.getElementById('status').innerText = "初始化中...";
+      try {
+        document.getElementById('status').innerText = "初始化中...";
 
-      await liff.init({ liffId: LIFF_ID });
+        await liff.init({ liffId: LIFF_ID });
 
-      if (!liff.isLoggedIn()) {
-        liff.login(); // 自動導向 LINE 登入頁
-        return;
-      }
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
 
-      const profile = await liff.getProfile();
-      const userId = profile.userId;
+        const profile = await liff.getProfile();
+        const userId = profile.userId;
 
-      document.getElementById('status').innerText = "正在驗證身分...";
+        document.getElementById('status').innerText = "正在驗證身分...";
 
-      const res = await fetch(GAS_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId })
-      });
+        const res = await fetch(GAS_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId })
+        });
 
-      const result = await res.json();
-      if (result.status === 'authorized') {
-        document.getElementById('status').innerText = `✅ 登入成功，歡迎 ${profile.displayName}`;
-      } else {
-        document.getElementById('status').innerText = `❌ 你不在白名單中，請聯絡管理員`;
-        liff.logout();
+        const result = await res.json();
+
+        if (result.status === 'authorized') {
+          document.getElementById('status').innerText = `✅ 登入成功，歡迎 ${profile.displayName}`;
+          setTimeout(() => {
+            window.location.href = "index.html";
+          }, 1500);
+        } else {
+          document.getElementById('status').innerText = `❌ 你不在白名單中，請聯絡管理員`;
+          setTimeout(() => {
+            liff.logout();
+          }, 2000);
+        }
+      } catch (err) {
+        document.getElementById('status').innerText = `🚫 登入失敗：${err.message}`;
       }
     }
   </script>
