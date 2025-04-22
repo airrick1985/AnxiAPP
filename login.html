@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LINE 登入驗證</title>
+  <!-- LIFF SDK -->
   <script src="https://static.line-scdn.net/liff/edge/versions/2.21.0/sdk.js"></script>
   <style>
     body {
@@ -16,25 +17,27 @@
       font-size: 1.2em;
       color: #005a8d;
     }
+    #loginBtn {
+      padding: 10px 20px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
-
   <h2>🔐 使用 LINE 帳號登入驗證</h2>
   <p>請點選下方按鈕登入</p>
-  <button onclick="login()" style="padding: 10px 20px; font-size: 1rem;">使用 LINE 登入</button>
-
+  <button id="loginBtn">使用 LINE 登入</button>
   <div id="status"></div>
 
   <script>
-    const LIFF_ID = "2007306147-DrM2yLeA"; // 例如："2007306147-DrM2yLeA"
-    const GAS_API = "const GAS_API = 'https://square-snow-220a.airrick1985.workers.dev/';
-"; // GAS Web App URL
+    // �執行前端驗證的 LIFF ID 與 Proxy URL
+    const LIFF_ID = "2007306147-DrM2yLeA";
+    const GAS_API = "https://square-snow-220a.airrick1985.workers.dev/";
 
     async function login() {
       try {
-        document.getElementById('status').innerText = "初始化中...";
-
+        document.getElementById('status').innerText = '初始化中...';
         await liff.init({ liffId: LIFF_ID });
 
         if (!liff.isLoggedIn()) {
@@ -45,32 +48,28 @@
         const profile = await liff.getProfile();
         const userId = profile.userId;
 
-        document.getElementById('status').innerText = "正在驗證身分...";
-
+        document.getElementById('status').innerText = '正在驗證身分...';
         const res = await fetch(GAS_API, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId })
         });
-
         const result = await res.json();
 
         if (result.status === 'authorized') {
           document.getElementById('status').innerText = `✅ 登入成功，歡迎 ${profile.displayName}`;
-          setTimeout(() => {
-            window.location.href = "index.html";
-          }, 1500);
+          setTimeout(() => window.location.href = 'index.html', 1500);
         } else {
-          document.getElementById('status').innerText = `❌ 你不在白名單中，請聯絡管理員`;
-          setTimeout(() => {
-            liff.logout();
-          }, 2000);
+          document.getElementById('status').innerText = '❌ 你不在白名單中，請聯絡管理員';
+          setTimeout(() => liff.logout(), 2000);
         }
       } catch (err) {
         document.getElementById('status').innerText = `🚫 登入失敗：${err.message}`;
       }
     }
-  </script>
 
+    // 以事件綁定取代 inline onclick
+    document.getElementById('loginBtn').addEventListener('click', login);
+  </script>
 </body>
 </html>
