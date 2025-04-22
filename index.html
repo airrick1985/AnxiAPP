@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PWA 驗屋 App</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    body { font-family: 'Noto Sans TC', sans-serif; background-color: #f4f6f8; padding-bottom: 5rem; }
+    .grid-icon { font-size: 2rem; color: #005a8d; }
+    .grid-label { font-size: 0.95rem; margin-top: 0.5rem; color: #333; }
+    .toolbar { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
+    #annotationCanvas { border:1px solid #ccc; touch-action: none; cursor: default; }
+    .tab-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; box-shadow: 0 -1px 5px rgba(0,0,0,0.1); z-index: 1000; }
+    .tab-bar .nav-link { color: #777; }
+    .tab-bar .nav-link.active { color: #005a8d; }
+    .d-none { display: none; }
+/* 容器寬度限定為螢幕寬度，不會超出 */
+#canvasContainer {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto; /* 寬圖可左右滑動 */
+}
+
+/* 畫布寬度以容器 100% 為主，高度自動 */
+#annotationCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid #ccc;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+  </style>
+</head>
+<body>
+
+  <!-- 首頁 -->
+  <div class="container py-4" id="homePage">
+    <h5 class="text-center mb-4">更多功能</h5>
+    <div class="row text-center g-4">
+      <div class="col-4"><i class="bi bi-person-plus grid-icon"></i><div class="grid-label">加入帳號</div></div>
+      <div class="col-4"><i class="bi bi-person-lines-fill grid-icon"></i><div class="grid-label">個人資料</div></div>
+      <div class="col-4"><i class="bi bi-flag grid-icon"></i><div class="grid-label">企業驗屋</div></div>
+      <div class="col-4"><i class="bi bi-gear grid-icon"></i><div class="grid-label">設定</div></div>
+      <div class="col-4"><i class="bi bi-clock grid-icon"></i><div class="grid-label">預約記錄</div></div>
+      <div class="col-4"><i class="bi bi-file-earmark-pdf grid-icon"></i><div class="grid-label">匯出報告</div></div>
+      <div class="col-4"><i class="bi bi-images grid-icon"></i><div class="grid-label">相簿管理</div></div>
+      <div class="col-4" onclick="showInspectionForm()" style="cursor:pointer;"><i class="bi bi-pencil-square grid-icon"></i><div class="grid-label">開始驗屋</div></div>
+      <div class="col-4"><i class="bi bi-shield-check grid-icon"></i><div class="grid-label">安全簽署</div></div>
+    </div>
+  </div>
+
+  <!-- 開始驗屋頁面 -->
+  <div class="container py-4 d-none" id="inspectionPage">
+    <h5 class="text-center mb-4">開始驗屋</h5>
+    <form id="startInspectionForm">
+      <div class="mb-3">
+        <label class="form-label">選擇棟別</label>
+        <select class="form-select" id="buildingSelect" onchange="loadUnits()">
+          <option>請選擇</option>
+          <option>A棟</option>
+          <option>B棟</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">選擇戶別</label>
+        <select class="form-select" id="unitSelect" onchange="loadOwnerInfo()">
+          <option>請先選擇棟別</option>
+        </select>
+      </div>
+      <div class="mb-3"><label class="form-label">門牌</label><input type="text" class="form-control" id="address" readonly></div>
+      <div class="mb-3"><label class="form-label">屋主姓名</label><input type="text" class="form-control" id="owner" readonly></div>
+      <div class="mb-3"><label class="form-label">電話</label><input type="text" class="form-control" id="phone" readonly></div>
+      <div class="mb-3"><label class="form-label">車位</label><input type="text" class="form-control" id="parking" readonly></div>
+      <div class="mb-3"><label class="form-label">備註</label><textarea class="form-control" id="remarks" rows="2" readonly></textarea></div>
+      <div class="mb-3"><label class="form-label">驗屋時間</label><input type="datetime-local" class="form-control" id="inspectionTime"></div>
+      <div class="mb-3"><label class="form-label">驗屋人員</label><input type="text" class="form-control" id="inspector" value="目前登入帳號" readonly></div>
+      <button type="button" class="btn btn-primary w-100" onclick="enterInspectionFlow()">開始驗屋流程</button>
+      <button type="button" class="btn btn-secondary mt-2 w-100" onclick="goBack()">返回首頁</button>
+    </form>
+  </div>
+
+  <!-- 驗屋流程頁面 -->
+  <div class="container py-4 d-none" id="inspectionFlowPage">
+    <h5 class="text-center mb-4">驗屋流程</h5>
+    <form id="inspectionFlowForm" onsubmit="saveItem(event)">
+
+      <div class="mb-3">
+        <label class="form-label">選擇區域</label>
+        <select class="form-select" id="areaSelect" onchange="loadInspectionItems()">
+          <option>客廳</option><option>廚房</option><option>主臥</option><option>次臥A</option>
+          <option>次臥B</option><option>次臥C</option><option>主浴</option><option>次浴</option>
+          <option>前陽台</option><option>後陽台</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">檢查項目</label>
+        <select class="form-select" id="itemSelect">
+          <option>地板平整</option><option>牆面裂縫</option><option>窗戶密合</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">狀況</label>
+        <select class="form-select" id="statusSelect">
+          <option>正常</option><option>異常</option><option>待確認</option><option>未施測</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">上傳照片並標註</label>
+        <input type="file" class="form-control" accept="image/*" onchange="previewAndAnnotate(event)">
+        <div id="toolbar" class="toolbar d-none mt-3">
+          <input type="color" id="colorPicker" value="#ff0000">
+          <input type="range" id="brushSize" min="1" max="20" value="3">
+          <button type="button" onclick="setTool('brush')" class="btn btn-sm btn-outline-secondary">畫筆</button>
+          <button type="button" onclick="setTool('rect')" class="btn btn-sm btn-outline-secondary">矩形</button>
+          <button type="button" onclick="setTool('ellipse')" class="btn btn-sm btn-outline-secondary">橢圓</button>
+          <button type="button" onclick="clearAnnotations()" class="btn btn-sm btn-outline-secondary">清除所有註記</button>
+        </div>
+        <div id="canvasContainer" class="d-none mt-2"><canvas id="annotationCanvas"></canvas></div>
+      </div>
+
+      <div class="mb-3"><label class="form-label">說明</label><textarea class="form-control" id="description" rows="3"></textarea></div>
+      <button type="submit" class="btn btn-success w-100">保存並繼續</button>
+      <button type="button" class="btn btn-secondary mt-2 w-100" onclick="goBackToStart()">返回戶別選擇</button>
+    </form>
+  </div>
+
+  <!-- 底部導航 -->
+  <nav class="tab-bar nav nav-pills nav-justified">
+    <a class="nav-link active" href="#"><i class="bi bi-person"></i><br>人員</a>
+    <a class="nav-link" href="#"><i class="bi bi-house"></i><br>記錄</a>
+    <a class="nav-link" href="#"><i class="bi bi-plus-circle"></i><br>新增</a>
+    <a class="nav-link" href="#"><i class="bi bi-image"></i><br>照片</a>
+    <a class="nav-link" href="#"><i class="bi bi-three-dots"></i><br>更多</a>
+  </nav>
+
+  <script>
+    let ctx, initialImageData, origImageData, drawing=false, startX, startY, tool='brush';
+
+function showInspectionForm() {
+  document.getElementById('homePage').classList.add('d-none');
+  document.getElementById('inspectionPage').classList.remove('d-none');
+
+  // 將 UTC 時間轉為台灣時間（UTC+8）
+  const now = new Date();
+  const tzOffset = now.getTimezoneOffset() * 60000; // 時區偏移毫秒數
+  const taiwanTime = new Date(now.getTime() - tzOffset + (0 * 3600000)); // UTC + 8
+  const formatted = taiwanTime.toISOString().slice(0, 16);
+  document.getElementById('inspectionTime').value = formatted;
+}
+
+
+
+
+    function goBack() {
+      document.getElementById('inspectionPage').classList.add('d-none');
+      document.getElementById('homePage').classList.remove('d-none');
+    }
+
+    function enterInspectionFlow() {
+      document.getElementById('inspectionPage').classList.add('d-none');
+      document.getElementById('inspectionFlowPage').classList.remove('d-none');
+    }
+
+    function goBackToStart() {
+      document.getElementById('inspectionFlowPage').classList.add('d-none');
+      document.getElementById('inspectionPage').classList.remove('d-none');
+    }
+
+    function loadUnits() {
+      const b = document.getElementById('buildingSelect').value;
+      const u = document.getElementById('unitSelect'); u.innerHTML = '';
+      if (b==='A棟') u.innerHTML = '<option>1F-1</option><option>2F-1</option>';
+      else if (b==='B棟') u.innerHTML = '<option>1F-2</option><option>2F-2</option>';
+      else u.innerHTML = '<option>請先選擇棟別</option>';
+    }
+
+    function loadOwnerInfo() {
+      const unit = document.getElementById('unitSelect').value;
+      document.getElementById('address').value = unit + ' 號';
+      document.getElementById('owner').value = '張三';
+      document.getElementById('phone').value = '0912345678';
+      document.getElementById('parking').value = 'B1-23';
+      document.getElementById('remarks').value = '高樓層景觀戶';
+    }
+
+    function loadInspectionItems() {
+      const area = document.getElementById('areaSelect').value;
+      const sel = document.getElementById('itemSelect'); sel.innerHTML = '';
+      if (area==='廚房') sel.innerHTML = '<option>瓦斯管線</option><option>排油煙機</option><option>流理臺</option>';
+      else if (area==='主浴') sel.innerHTML = '<option>馬桶</option><option>水龍頭</option><option>排水孔</option>';
+      else sel.innerHTML = '<option>地板平整</option><option>牆面裂縫</option><option>插座</option>';
+    }
+
+    function setTool(t) {
+      tool = t;
+      const c = document.getElementById('annotationCanvas');
+      if (c) c.style.cursor = 'crosshair';
+    }
+
+    function previewAndAnnotate(e) {
+      const file = e.target.files[0]; if (!file) return;
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.getElementById('annotationCanvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        initialImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        origImageData = initialImageData;
+        document.getElementById('toolbar').classList.remove('d-none');
+        document.getElementById('canvasContainer').classList.remove('d-none');
+        setTool(tool);
+        canvas.onpointerdown = pointerDown;
+        canvas.onpointermove = pointerMove;
+        canvas.onpointerup = pointerUp;
+      };
+      img.src = URL.createObjectURL(file);
+    }
+
+    function pointerDown(e) {
+      if (!ctx) return;
+      drawing = true;
+      const rect = document.getElementById('annotationCanvas').getBoundingClientRect();
+      startX = e.clientX - rect.left;
+      startY = e.clientY - rect.top;
+      if (tool === 'brush') {
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+      }
+    }
+
+    function pointerMove(e) {
+      if (!drawing || !ctx) return;
+      const rect = document.getElementById('annotationCanvas').getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      if (tool === 'brush') {
+        ctx.strokeStyle = document.getElementById('colorPicker').value;
+        ctx.lineWidth = document.getElementById('brushSize').value;
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        // commit stroke
+        origImageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+      } else {
+        // preview shapes
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.putImageData(origImageData, 0, 0);
+        ctx.strokeStyle = document.getElementById('colorPicker').value;
+        ctx.lineWidth = document.getElementById('brushSize').value;
+        if (tool === 'rect') {
+          ctx.strokeRect(startX, startY, x - startX, y - startY);
+        } else if (tool === 'ellipse') {
+          const rx = Math.abs(x - startX) / 2;
+          const ry = Math.abs(y - startY) / 2;
+          const cx = (startX + x) / 2;
+          const cy = (startY + y) / 2;
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, rx, ry, 0, 0, 2 * Math.PI);
+          ctx.stroke();
+        }
+      }
+    }
+
+    function pointerUp(e) {
+      if (!drawing || !ctx) return;
+      drawing = false;
+      // commit final shape
+      origImageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+    }
+
+    function clearAnnotations() {
+      if (!ctx || !initialImageData) return;
+      ctx.putImageData(initialImageData, 0, 0);
+      origImageData = initialImageData;
+    }
+
+    function saveItem(evt) {
+      evt.preventDefault();
+      alert('項目已保存');
+    }
+  </script>
+
+  <script>
+  const LIFF_ID = '2007306147-DrM2yLeA';
+  const GAS_API = 'https://script.google.com/macros/s/AKfycbz1RUvNGAlQjAFTx7gdNKcqb189bZfTuTklGRL8EimQ5SsjIwhViMtQOqpR6_5EVkI/exec';
+
+  window.onload = async function () {
+    document.getElementById('homePage').classList.add('d-none');
+    try {
+      await liff.init({ liffId: LIFF_ID });
+      if (!liff.isLoggedIn()) {
+        liff.login();
+        return;
+      }
+
+      const profile = await liff.getProfile();
+      const userId = profile.userId;
+
+      const res = await fetch(GAS_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+      });
+
+      const result = await res.json();
+      if (result.status === 'authorized') {
+        document.getElementById('userWelcome').innerText = `👋 歡迎 ${profile.displayName}`;
+        document.getElementById('homePage').classList.remove('d-none');
+      } else {
+        alert("❌ 你不在白名單中，無法使用本系統");
+        liff.logout();
+        window.location.href = 'login.html';
+      }
+    } catch (err) {
+      alert("登入失敗或初始化錯誤：" + err.message);
+    }
+  }
+</script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
