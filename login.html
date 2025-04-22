@@ -31,45 +31,41 @@
   <div id="status"></div>
 
   <script>
-    // �執行前端驗證的 LIFF ID 與 Proxy URL
     const LIFF_ID = "2007306147-DrM2yLeA";
     const GAS_API = "https://square-snow-220a.airrick1985.workers.dev/";
 
     async function login() {
+      document.getElementById('status').innerText = '初始化中...';
       try {
-        document.getElementById('status').innerText = '初始化中...';
         await liff.init({ liffId: LIFF_ID });
-
         if (!liff.isLoggedIn()) {
           liff.login();
           return;
         }
-
+        document.getElementById('status').innerText = '正在驗證身分...';
         const profile = await liff.getProfile();
         const userId = profile.userId;
-
-        document.getElementById('status').innerText = '正在驗證身分...';
         const res = await fetch(GAS_API, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId })
         });
         const result = await res.json();
-
         if (result.status === 'authorized') {
           document.getElementById('status').innerText = `✅ 登入成功，歡迎 ${profile.displayName}`;
-          setTimeout(() => window.location.href = 'index.html', 1500);
+          setTimeout(() => { window.location.href = 'index.html'; }, 1500);
         } else {
           document.getElementById('status').innerText = '❌ 你不在白名單中，請聯絡管理員';
-          setTimeout(() => liff.logout(), 2000);
+          setTimeout(() => { liff.logout(); }, 2000);
         }
       } catch (err) {
         document.getElementById('status').innerText = `🚫 登入失敗：${err.message}`;
       }
     }
 
-    // 以事件綁定取代 inline onclick
-    document.getElementById('loginBtn').addEventListener('click', login);
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('loginBtn').addEventListener('click', login);
+    });
   </script>
 </body>
 </html>
